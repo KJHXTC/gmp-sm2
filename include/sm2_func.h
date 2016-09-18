@@ -35,7 +35,7 @@ void pubkey_encryption(
 		mpz_t * p,
 		mpz_t * n,
 		mpz_t * Pb,
-		UBYTE * msg, ULONG klen,
+		const UBYTE * msg, ULONG klen,
 		UBYTE * res, ULONG *reslen
 		);
 

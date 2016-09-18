@@ -1,4 +1,5 @@
 RM := rm -rf
+CC := gcc
 
 # All of the sources participating in the build are defined here
 -include sources.mk
@@ -14,19 +15,24 @@ endif
 
 
 # All Target
-all: yl_sm2_gmp
+all : demo liba
 
 # Tool invocations
-yl_sm2_gmp: $(OBJS) $(USER_OBJS)
+demo: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -D_DEBUG -L"../lib" -o"yl_sm2_gmp" $(OBJS) $(USER_OBJS) $(LIBS) -I ../include 
+	$(CC) -o "demo" $(OBJS) $(USER_OBJS) $(LIBS) -I ../include -L"../lib" 
 	@echo 'Finished building target: $@'
 	@echo ' '
 
+liba: 
+	-$(AR) x ../lib/libgmp.a 
+	-$(AR) -r libsm2enc.a $(OBJS) *.o
+	-$(RM) *.o
+
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) yl_sm2_gmp
+	-$(RM) $(OBJS)$(C_DEPS)$(EXECUTABLES) demo libsm2enc.a
 	-@echo ' '
 
 .PHONY: all clean dependents

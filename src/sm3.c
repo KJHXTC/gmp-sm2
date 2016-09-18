@@ -229,7 +229,5 @@ unsigned char *SM3Calc(const unsigned char *message,
 void sm3( unsigned char *input, int ilen,
            unsigned char output[32] )
 {
-    SM3Context ctx;
-
     SM3Calc(input, ilen, output);
 }

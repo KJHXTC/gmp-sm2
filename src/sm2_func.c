@@ -8,14 +8,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
-#include "debug.h"
 #include "gmp.h"
-#include "int_arithmetic.h"
-#include "ec_operations.h"
 #include "sm2_func.h"
 #include "sm3.h"
-#include "yl_base_tools.h"
+#include "base_tools.h"
 
 /*
  *use pubkey pb encrypt the message m, the result is res .
@@ -23,11 +21,14 @@
 void pubkey_encryption(
 		mpz_t * curv, mpz_t * base_point,mpz_t * p, mpz_t * n, 
 		mpz_t * Pb,
-		unsigned char *m, unsigned long mlen,
+		const unsigned char * m,   unsigned long mlen,
 		unsigned char * res ,unsigned long *reslen){
 
-	gmp_randinit_default(stat);
-		
+
+	gmp_randinit_mt(stat);
+	srand((unsigned int)(time(NULL) ^ rand()));
+	gmp_randseed_ui(stat, rand());
+
 	mpz_t r,k,k1;
 	mpz_t p1[2];
 	mpz_t p2[2];
@@ -48,63 +49,53 @@ void pubkey_encryption(
 	unsigned char c2[kchar];
 	unsigned char c3[VBYTE];
 	unsigned char tmp[VBYTE*2];
-	unsigned char *xmy;
-	unsigned char *px;
-	unsigned char *py;
+	unsigned char *xmy=NULL;
+	unsigned char *px=NULL;
+	unsigned char *py=NULL;
 
-	printf("1. 产生随机数k \n");
 //1. 产生随机数k k in range(1, N)
 	while (mpz_sgn(r) == 0) {
 		myprimegenerator(&k1);
-		printf("1.1 myprimegenerator \n");
 		mpz_mod(k, k1, *n);
-		gmp_printf("k1 is %ZX\n", k1);
 
 		while (mpz_sgn(k) == 0){
 			myprimegenerator(&k1);
 		}
-			
-		printf("2.计算K倍的G 点 \n");
 		point_mult_window(curv, base_point, &k, p1, p);
 		mpz_mod(r, p1[0], *n);
 	}
-	gmp_printf("x1 is %ZX\n" ,p1[0]);
-	gmp_printf("y1 is %ZX\n" ,p1[1]);
-
 
 
 	// 计算得到C1
-	
 	px = hextochs(mpz_get_str(NULL, 16, p1[0]));
-	printf("colloc c1 px: ptr::%x\n", px);
 	py = hextochs(mpz_get_str(NULL, 16, p1[1]));
-	printf("colloc c1 py: ptr::%x\n", py);
-	printf("3.计算C1\n");
+
 	memcpy(c1, px, VBYTE);
 	memcpy(c1+VBYTE, py, VBYTE);
-	printf("free c1 px: ptr::%x\n", px);
-	free(px);
-	printf("free c1 py: ptr::%x\n", py);
+	free(px);	
 	free(py);
+
 #ifdef DEBUG_PRINT
+	gmp_printf("k1 is %ZX\n", k1);
+
 	printf("C1 %d = [", VBYTE);
 	for(i=0 ;i<(VBYTE*2);i++){
-                printf("%02X",*(c1+i));
-        }
+		printf("%02X",*(c1+i));
+    }
 	printf("]\n");
 #endif
-	// 公钥计算是否无穷点S
-	printf("4.计算Pb的k倍点C2 \n");
-	point_mult_window(curv, Pb, &k, p2, p);
 
+	// 公钥计算是否无穷点S
+	point_mult_window(curv, Pb, &k, p2, p);
 	px = hextochs(mpz_get_str(NULL, 16, p2[0]));
-	printf("colloc c2 py: ptr::%x\n", px);
 	py = hextochs(mpz_get_str(NULL, 16, p2[1]));
-	printf("colloc c2 py: ptr::%x\n", py);
 	memcpy(tmp, px, VBYTE);
 	memcpy(tmp+VBYTE, py, VBYTE);
-	printf("5.产生密钥数据K \n");
 	sm2Kdf(tmp, VBYTE*2, mlen*8, K);
+
+	for (i = 0; i < kchar; i++)
+		c2[i] = m[i] ^ K[i];
+#ifdef DEBUG_PRINT
 	printf("t %d = [", kchar);
 	for(i=0 ;i<kchar;i++){
 		printf("%02X", K[i]);
@@ -115,9 +106,6 @@ void pubkey_encryption(
 		printf("%02X", m[i]);
 	}
 	printf("]\n");
-	for (i = 0; i < kchar; i++)
-		c2[i] = m[i] ^ K[i];
-#ifdef DEBUG_PRINT
 	gmp_printf("x2 is %ZX\n" ,p2[0]);
 	gmp_printf("y2 is %ZX\n" ,p2[1]);
 
@@ -127,6 +115,7 @@ void pubkey_encryption(
 	}
 	printf("]\n");
 #endif
+
 //	计算C3
 	xmy=(unsigned char *)malloc(VBYTE*2+kchar);
 	memset(xmy,0, (VBYTE*2)+kchar);
@@ -161,30 +150,19 @@ void pubkey_encryption(
 	}
 	printf("]\n");
 #endif
-	printf("free c2 px: ptr::%x\n", px);
-	//free(px);
-	printf("free c2 py: ptr::%x\n", py);
-	//free(py);
-	printf("free: ptr::%x\n", xmy);
+	free(px);
+	free(py);
 	free(xmy);
 
-
+	gmp_randclear (stat);
+	
 	mpz_clear(r);
 	mpz_clear(k);
 	mpz_clear(k1);
-
-	gmp_randclear (stat);
-
-	printf("clear r k k1 done;;;\n");
 	mpz_clear(p1[0]);
-	printf("clear p1x done;;;\n");
 	mpz_clear(p1[1]);
-	printf("clear p1y done;;;\n");
 	mpz_clear(p2[0]);
 	mpz_clear(p2[1]);
-	printf("clear p2 done;;;\n");
-	printf("clear done;;;\n");
-
 }
 
 
@@ -214,14 +192,8 @@ ULONG sm2_encrypt(int keylen, const char* pkx, const char* pky, const char* mess
 	ULONG clen;
 	clen = 1+ VBYTE*3+datalen;
 	*result = (UBYTE*) malloc(clen);
-/*
-	gmp_printf("curv[0] is %Zx\n" , curv[0]);
-	gmp_printf("curv[1] is %Zx\n" , curv[1]);
-	gmp_printf("base_point[0] is %Zx\n" , base_point[0]);
-	gmp_printf("base_point[1] is %Zx\n" , base_point[1]);
-	gmp_printf("p is %Zx\n" , p);
-	gmp_printf("n is %Zx\n" , n);
-*/
+
+
 #ifdef DEBUG_PRINT
 	gmp_printf("Q[0] is %Zx\n" , Q[0]);
 	gmp_printf("Q[1] is %Zx\n" , Q[1]);
@@ -229,20 +201,21 @@ ULONG sm2_encrypt(int keylen, const char* pkx, const char* pky, const char* mess
 #endif
 
 	ULONG reslen=0;
-
-	UBYTE * data ;
+	UBYTE * data=NULL;
 	data = hextochs(message);
-	gmp_printf("call pkenc data\n");
 	pubkey_encryption(curv, base_point, &p, &n, Q, data, datalen, *result, &reslen);
-	gmp_printf("end pkenc data\n");
+
 //	释放指针
 	free(data);
 
-	mpz_clear(curv);
-	mpz_clear(base_point);
+	mpz_clear(curv[0]);
+	mpz_clear(curv[1]);
+	mpz_clear(base_point[0]);
+	mpz_clear(base_point[1]);
 	mpz_clear(p);
 	mpz_clear(n);
-	mpz_clear(Q);
+	mpz_clear(Q[0]);
+	mpz_clear(Q[1]);
 	
 	return reslen;
 }

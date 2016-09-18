@@ -16,7 +16,7 @@
 # include <stddef.h>
 # include <stdio.h>
 # include <stdlib.h>
-# include <unistd.h>
+//# include <unistd.h>
 
 # include "gmp.h"
 # include "int_arithmetic.h"
@@ -416,6 +416,7 @@ void point_mult_naf(mpz_t * curv, mpz_t * p1, mpz_t * k, mpz_t * result,
 	mpz_clear(R1[0]);
 	mpz_clear(R1[1]);
 
+	mpz_clear(one);
 	mpz_clear(k1);
 	mpz_clear(k2);
 	mpz_clear(b1);
@@ -550,6 +551,7 @@ void point_mult_window(mpz_t * curv, mpz_t * p1, mpz_t * k1, mpz_t * result,
 		mpz_clear(ph[j][0]);
 		mpz_clear(ph[j][1]);
 	}
+	free(k);
 }
 
 /* create a public key from the private key and the base point of the curve */
